@@ -10,6 +10,16 @@ android {
     namespace = "com.rrtry.tagify"
     compileSdk = 34
 
+    flavorDimensions += "architecture"
+    productFlavors {
+        create("x86") {
+            dimension = "architecture"
+        }
+        create("arm") {
+            dimension = "architecture"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.rrtry.tagify"
         minSdk = 26
@@ -66,7 +76,8 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version")
     ksp("com.google.dagger:hilt-compiler:$hilt_version")
 
-    implementation(files("libs/ffmpeg-kit-x86.aar"))
+    add("x86Implementation", files("libs/ffmpeg-kit-x86.aar"))
+    add("armImplementation", files("libs/ffmpeg-kit-arm.aar"))
     implementation(files("libs/JTagger.jar"))
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
