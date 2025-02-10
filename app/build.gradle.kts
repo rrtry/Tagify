@@ -9,16 +9,8 @@ plugins {
 android {
     namespace = "com.rrtry.tagify"
     compileSdk = 34
-
-    flavorDimensions += "architecture"
-    productFlavors {
-        create("x86") {
-            dimension = "architecture"
-        }
-        create("arm") {
-            dimension = "architecture"
-        }
-    }
+    ndkVersion = "27.1.12297006"
+    buildToolsVersion = "34.0.0"
 
     defaultConfig {
         applicationId = "com.rrtry.tagify"
@@ -28,8 +20,24 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters.addAll(arrayOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
+        }
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs(listOf("libs"))
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = File("CMakeLists.txt")
         }
     }
 
@@ -76,9 +84,7 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version")
     ksp("com.google.dagger:hilt-compiler:$hilt_version")
 
-    add("x86Implementation", files("libs/ffmpeg-kit-x86.aar"))
-    add("armImplementation", files("libs/ffmpeg-kit-arm.aar"))
-    implementation(files("libs/JTagger.jar"))
+    implementation(files("libs/java/JTagger-android.jar"))
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")

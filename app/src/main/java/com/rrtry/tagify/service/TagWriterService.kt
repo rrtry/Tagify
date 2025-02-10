@@ -13,9 +13,9 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.PowerManager.PARTIAL_WAKE_LOCK
 import android.provider.MediaStore.MediaColumns.DISPLAY_NAME
+import android.util.Log
 import androidx.core.app.ServiceCompat.startForeground
 import androidx.core.net.toUri
-import com.arthenica.ffmpegkit.FFmpegKit
 import com.jtagger.AbstractTag
 import com.jtagger.AbstractTag.PICTURE
 import com.jtagger.AttachedPicture
@@ -42,6 +42,7 @@ import com.rrtry.tagify.data.entities.Tag
 import com.rrtry.tagify.data.entities.Track
 import com.rrtry.tagify.data.entities.TrackWithTags
 import com.rrtry.tagify.data.entities.fromTag
+import com.rrtry.tagify.natives.FpCalc
 import com.rrtry.tagify.prefs.PREFS_VALUE_LOOKUP_METHOD_FILENAME
 import com.rrtry.tagify.prefs.PREFS_VALUE_LOOKUP_METHOD_FINGERPRINT
 import com.rrtry.tagify.prefs.PREFS_VALUE_LOOKUP_METHOD_NONE
@@ -415,13 +416,9 @@ class TagWriterService @Inject constructor(): Service() {
         id: Long,
         lookupArtwork: Boolean): Pair<Boolean, List<Tag>>?
     {
-        val fingerprint = generateFingerprint(applicationContext, path, id)
-        if (!fingerprint.second) {
-            return null
-        }
-
+        val fingerprint = calculateFingerprint(applicationContext, path, id) ?: return null
         var success: Boolean
-        var results = tagRepository.fetchTags(acoustIdKey!!, readFingerprint(fingerprint.first), length)
+        var results = tagRepository.fetchTags(acoustIdKey!!, fingerprint, length)
         var tags    = results.second
         success     = results.first
 
@@ -895,15 +892,7 @@ fun startForegroundServiceCompat(
     )
 }
 
-fun readFingerprint(fpFile: File): String {
-    val fingerprint: String
-    FileReader(fpFile).use {
-        fingerprint = it.readText()
-    }
-    return fingerprint
-}
-
-fun generateFingerprint(context: Context, path: String, id: Long): Pair<File, Boolean> {
+fun calculateFingerprint(context: Context, path: String, id: Long): String? {
 
     val cacheDir = context.cacheDir.resolve(FINGERPRINTS_CACHE_DIR)
     if (!cacheDir.exists()) {
@@ -911,8 +900,13 @@ fun generateFingerprint(context: Context, path: String, id: Long): Pair<File, Bo
     }
 
     val fpFile = cacheDir.resolve("$id")
-    val result = if (!fpFile.exists()) FFmpegKit.execute("-y -t 120 -i '$path' -f chromaprint $fpFile")
-        .returnCode.isValueSuccess else fpFile.totalSpace > 0
+    if (fpFile.exists() && fpFile.totalSpace > 0)
+        return FileReader(fpFile).use { it.readText() }
 
-    return Pair(fpFile, result)
+    val result = FpCalc.exec(arrayOf("-plain", "-ignore-errors", path))
+    if (!result.success) {
+        Log.e(TAG, "fpcalc error: ${result.error}")
+        Log.e(TAG, "fpcalc: ${result.fingerprint}")
+    }
+    return if (result.success) result.fingerprint else null
 }
