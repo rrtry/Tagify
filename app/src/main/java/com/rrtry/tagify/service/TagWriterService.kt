@@ -628,8 +628,15 @@ class TagWriterService @Inject constructor(): Service() {
             ensureActive()
 
             val track    = tracksDeque.first()
-            val response = lookupTags(track, lookupMethod, false) ?: continue
+            val response = lookupTags(track, lookupMethod, false)
             var tags: List<Tag>
+
+            if (response == null) {
+                tracksDeque.removeFirst()
+                updateLookupResults(track, listOf())
+                updateProgress(++processed, total, false)
+                continue
+            }
 
             if (response.first) {
 
