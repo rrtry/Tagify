@@ -1,3 +1,9 @@
+import com.android.build.api.variant.ApplicationVariant
+import com.android.build.api.variant.FilterConfiguration
+import com.android.build.api.variant.VariantOutputConfiguration
+import org.gradle.internal.enterprise.test.OutputFileProperty
+import org.gradle.language.nativeplatform.internal.Dimensions.applicationVariants
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +11,8 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("kotlin-parcelize")
 }
+
+val abiCodes = mapOf("armeabi-v7a" to 1, "x86" to 2, "x86_64" to 3, "arm64-v8a" to 4);
 
 android {
     namespace = "com.rrtry.tagify"
@@ -21,11 +29,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ndk {
-            abiFilters.addAll(arrayOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
-        }
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    splits {
+        abi {
+            this.isEnable = true
+            reset()
+            this.include("x86", "x86_64", "arm64-v8a", "armeabi-v7a")
+            this.isUniversalApk = false
         }
     }
 
@@ -64,6 +78,19 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val baseVersionCode = variant.outputs.first().versionCode.get()?.toInt() ?: 1
+        variant.outputs.forEach { output ->
+            val abiFilter = output.filters.find { it.filterType == FilterConfiguration.FilterType.ABI }
+            val baseAbiVersionCode = abiFilter?.identifier?.let { abiCodes[it] }
+            if (baseAbiVersionCode != null) {
+                output.versionCode.set(baseAbiVersionCode * 1000 + baseVersionCode)
+            }
         }
     }
 }
