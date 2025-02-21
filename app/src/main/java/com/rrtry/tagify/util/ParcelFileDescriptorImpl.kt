@@ -48,7 +48,7 @@ class ParcelFileDescriptorImpl(var pfd: ParcelFileDescriptor) : FileReference {
     }
 
     override fun read(b: ByteArray, off: Int, len: Int): Int {
-        val read = rethrowIOException { pread(pfd.fileDescriptor, b, off, b.size, filePointer) }
+        val read = rethrowIOException { pread(pfd.fileDescriptor, b, off, len, filePointer) }
         filePointer += read
         return read
     }
